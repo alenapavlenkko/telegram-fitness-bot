@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fitlife_postgres
+    environment:
+      POSTGRES_USER: fituser
+      POSTGRES_PASSWORD: 2005
+      POSTGRES_DB: fitlife
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - fitlife_net
+    # ВАЖНО: добавьте healthcheck
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fituser -d fitlife"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  bot:
+    build: .
+    container_name: fitlife_bot
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://fituser:2005@postgres:5432/fitlife?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy  # Ждем пока БД станет здоровой
+    networks:
+      - fitlife_net
+    restart: on-failure  # Перезапуск при ошибке
+
+volumes:
+  pgdata:
+
+networks:
+  fitlife_net:
