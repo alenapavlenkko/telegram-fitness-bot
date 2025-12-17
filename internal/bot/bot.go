@@ -23,7 +23,6 @@ type BotApp struct {
 	nutritionService *service.NutritionService
 	categoryService  *service.CategoryService
 	userService      *service.UserService
-	progressService  *service.ProgressService
 
 	// Админ-панель
 	adminHandler *admin.AdminHandler
@@ -36,7 +35,6 @@ func NewBotApp(
 	nutritionService *service.NutritionService,
 	categoryService *service.CategoryService,
 	userService *service.UserService,
-	progressService *service.ProgressService,
 	adminIDs []int64,
 ) (*BotApp, error) {
 	botAPI, err := tgbotapi.NewBotAPI(token)
@@ -51,7 +49,6 @@ func NewBotApp(
 		nutritionService: nutritionService,
 		categoryService:  categoryService,
 		userService:      userService,
-		progressService:  progressService,
 	}
 
 	// Создаем админ-хендлер с функцией отправки сообщений
@@ -60,7 +57,6 @@ func NewBotApp(
 		nutritionService,
 		categoryService,
 		userService,
-		progressService,
 		bot.sendText, // передаем функцию отправки сообщений
 		func(chatID int64, text string, rows [][]tgbotapi.InlineKeyboardButton) {
 			bot.sendTextWithKeyboard(chatID, text, rows)

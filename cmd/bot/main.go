@@ -40,7 +40,6 @@ func main() {
 		&models.TrainingProgram{},
 		&models.NutritionPlan{},
 		&models.User{},
-		&models.UserProgress{},
 		&models.WeeklyMenu{}, // Добавьте эту модель
 		&models.MenuDay{},    // Добавьте эту модель
 		&models.DayMeal{},    // Добавьте эту модель
@@ -56,7 +55,6 @@ func main() {
 	nutritionRepo := repository.NewNutritionRepo(db)
 	weeklyMenuRepo := repository.NewWeeklyMenuRepo(db)
 	userRepo := repository.NewUserRepo(db)
-	progressRepo := repository.NewProgressRepo(db)
 
 	// -----------------------
 	// SERVICES
@@ -64,7 +62,6 @@ func main() {
 	categoryService := service.NewCategoryService(categoryRepo)
 	nutritionService := service.NewNutritionService(nutritionRepo, weeklyMenuRepo)
 	userService := service.NewUserService(userRepo)
-	progressService := service.NewProgressService(progressRepo)
 
 	// -----------------------
 	// BOT
@@ -83,7 +80,6 @@ func main() {
 		nutritionService,
 		categoryService,
 		userService,
-		progressService,
 		adminIDs,
 	)
 	if err != nil {

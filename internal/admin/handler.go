@@ -17,7 +17,6 @@ type AdminHandler struct {
 	nutritionService     *service.NutritionService
 	categoryService      *service.CategoryService
 	userService          *service.UserService
-	progressService      *service.ProgressService
 	Fsm                  *AdminFSM
 	sendTextFunc         func(chatID int64, text string)
 	sendTextWithKeyboard func(chatID int64, text string, rows [][]tgbotapi.InlineKeyboardButton)
@@ -918,7 +917,6 @@ func NewAdminHandler(
 	nutritionService *service.NutritionService,
 	categoryService *service.CategoryService,
 	userService *service.UserService,
-	progressService *service.ProgressService,
 	sendText func(int64, string),
 	sendTextWithKeyboard func(int64, string, [][]tgbotapi.InlineKeyboardButton),
 ) *AdminHandler {
@@ -928,7 +926,6 @@ func NewAdminHandler(
 		nutritionService:     nutritionService,
 		categoryService:      categoryService,
 		userService:          userService,
-		progressService:      progressService,
 		Fsm:                  NewAdminFSM(),
 		sendTextFunc:         sendText,
 		sendTextWithKeyboard: sendTextWithKeyboard,
