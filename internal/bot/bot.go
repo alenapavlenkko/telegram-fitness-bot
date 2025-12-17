@@ -271,6 +271,8 @@ func (b *BotApp) handleAdminRegularMessage(chatID int64, text string) {
 	case "🍎 Питание":
 		log.Println("[handleAdminRegularMessage] Showing nutrition for admin")
 		b.showNutritionForUser(chatID)
+	case "📅 Недельное меню":
+		b.showWeeklyMenuForUser(chatID)
 	case "📂 Категории":
 		log.Println("[handleAdminRegularMessage] Showing categories for admin")
 		b.showCategoriesForUser(chatID)
@@ -301,6 +303,9 @@ func (b *BotApp) handleUserActions(chatID int64, text string) {
 	case "🍎 Питание":
 		log.Println("[handleUserActions] Calling showNutritionForUser")
 		b.showNutritionForUser(chatID)
+	case "📅 Недельное меню":
+		log.Println("[handleUserActions] Calling showWeeklyMenuForUser")
+		b.showWeeklyMenuForUser(chatID)
 	case "📂 Категории":
 		log.Println("[handleUserActions] Calling showCategoriesForUser")
 		b.showCategoriesForUser(chatID)
@@ -527,7 +532,10 @@ func (b *BotApp) showMainMenu(chatID int64) {
 			tgbotapi.NewKeyboardButton("🍎 Питание"),
 		),
 		tgbotapi.NewKeyboardButtonRow(
+			tgbotapi.NewKeyboardButton("📅 Недельное меню"),
 			tgbotapi.NewKeyboardButton("📂 Категории"),
+		),
+		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButton("ℹ️ Помощь"),
 		),
 	)
@@ -690,5 +698,78 @@ func (b *BotApp) showNutritionListForSelection(chatID int64) {
 	}
 
 	msg += "\nПри добавлении приема пищи введите ID блюда из этого списка\\."
+	b.sendText(chatID, msg)
+}
+
+func (b *BotApp) showWeeklyMenuForUser(chatID int64) {
+	log.Printf("[showWeeklyMenuForUser] START for chatID=%d", chatID)
+
+	// Получаем активное недельное меню
+	activeMenu, err := b.nutritionService.GetActiveWeeklyMenu()
+	if err != nil {
+		log.Printf("[showWeeklyMenuForUser] ERROR: %v", err)
+		b.sendText(chatID, "❌ Не удалось загрузить недельное меню")
+		return
+	}
+
+	if activeMenu == nil {
+		b.sendText(chatID, "📭 Активное недельное меню еще не создано.\nОжидайте обновлений от администратора!")
+		return
+	}
+
+	// Загружаем полное меню с днями и приемами пищи
+	fullMenu, err := b.nutritionService.GetFullWeeklyMenu(activeMenu.ID)
+	if err != nil {
+		log.Printf("[showWeeklyMenuForUser] ERROR loading full menu: %v", err)
+		b.sendText(chatID, "📅 *"+activeMenu.Name+"*\n\n"+activeMenu.Description)
+		return
+	}
+
+	// Формируем красивое сообщение
+	msg := fmt.Sprintf("📅 *%s*\n\n", fullMenu.Name)
+	if fullMenu.Description != "" {
+		msg += fmt.Sprintf("%s\n\n", fullMenu.Description)
+	}
+
+	msg += fmt.Sprintf("🍽 Всего калорий за неделю: *%d ккал*\n\n", fullMenu.TotalCalories)
+
+	if len(fullMenu.Days) == 0 {
+		msg += "📭 Дни меню еще не добавлены\n"
+	} else {
+		msg += "📋 *Рацион на неделю:*\n\n"
+
+		// Группируем дни по номерам для удобного доступа
+		daysMap := make(map[int]models.MenuDay)
+		for _, day := range fullMenu.Days {
+			daysMap[day.DayNumber] = day
+		}
+
+		// Показываем дни от 1 до 7
+		for dayNum := 1; dayNum <= 7; dayNum++ {
+			if day, exists := daysMap[dayNum]; exists {
+				msg += fmt.Sprintf("*%d. %s* - %d ккал\n",
+					day.DayNumber, day.DayName, day.TotalCalories)
+
+				if len(day.Meals) > 0 {
+					for _, meal := range day.Meals {
+						if meal.Nutrition.ID != 0 {
+							msg += fmt.Sprintf("   🕐 %s: %s - %s (%d ккал)\n",
+								meal.MealTime, meal.MealType,
+								meal.Nutrition.Title, meal.Nutrition.Calories)
+							if meal.Notes != "" {
+								msg += fmt.Sprintf("     📝 %s\n", meal.Notes)
+							}
+						}
+					}
+				} else {
+					msg += "   📭 Приемы пищи не добавлены\n"
+				}
+				msg += "\n"
+			}
+		}
+	}
+
+	msg += "\n🍎 *Приятного аппетита!* 🍴"
+
 	b.sendText(chatID, msg)
 }
