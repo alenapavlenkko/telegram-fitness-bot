@@ -11,7 +11,7 @@ type NutritionPlan struct {
 	Carbs       float64
 	Fats        float64
 	CategoryID  uint
-	Category    Category `gorm:"foreignKey:CategoryID"` // Без models.
+	Category    Category `gorm:"foreignKey:CategoryID"`
 }
 
 // ==================== НОВЫЕ МОДЕЛИ ДЛЯ НЕДЕЛЬНОГО МЕНЮ ====================

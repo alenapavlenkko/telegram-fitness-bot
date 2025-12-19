@@ -282,7 +282,6 @@ func (b *BotApp) handleAdminRegularMessage(chatID int64, text string) {
 			"• Питание - планы питания\n"+
 			"• Категории - фильтрация контента\n\n"+
 			"Используйте /start для возврата в меню")
-		// В handleAdminRegularMessage добавьте:
 	case "/foodlist":
 		b.adminHandler.ShowNutritionListForSelection(chatID)
 	default:
@@ -292,7 +291,6 @@ func (b *BotApp) handleAdminRegularMessage(chatID int64, text string) {
 }
 
 // Обработка действий обычных пользователей
-// В handleUserActions оставьте только вызовы функций show...ForUser
 func (b *BotApp) handleUserActions(chatID int64, text string) {
 	log.Printf("[handleUserActions] chatID=%d, text='%s'", chatID, text)
 
@@ -338,7 +336,7 @@ func (b *BotApp) handleUserActions(chatID int64, text string) {
 	}
 }
 
-// Методы для пользователей (нужно будет реализовать)
+// Методы для пользователей
 func (b *BotApp) showTrainingsForUser(chatID int64) {
 	log.Printf("[showTrainingsForUser] START for chatID=%d", chatID)
 
@@ -656,7 +654,6 @@ func (b *BotApp) testTrainings(chatID int64) {
 	b.sendText(chatID, msg)
 }
 
-// В main.go или отдельном тестовом файле
 func testTrainingFlow(bot *BotApp, chatID int64) {
 	log.Println("=== TESTING TRAINING FLOW ===")
 

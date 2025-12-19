@@ -1,4 +1,3 @@
-// internal/repository/nutrition_repo.go
 package repository
 
 import (
@@ -53,7 +52,6 @@ func NewNutritionRepo(db *gorm.DB) *nutritionRepo {
 }
 
 // Реализация NutritionRepository
-
 func (r *nutritionRepo) Create(plan *models.NutritionPlan) (*models.NutritionPlan, error) {
 	result := r.db.Create(plan)
 	return plan, result.Error

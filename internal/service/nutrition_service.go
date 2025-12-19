@@ -1,4 +1,3 @@
-// internal/service/nutrition_service.go
 package service
 
 import (
@@ -137,8 +136,6 @@ func (s *NutritionService) AddDayToWeeklyMenu(dto AddDayToMenuDTO) (*models.Menu
 	return s.weeklyMenuRepo.CreateDay(day)
 }
 
-// internal/service/nutrition_service.go
-// Исправьте строку 143 - удалите неиспользуемую переменную nutrition
 func (s *NutritionService) AddMealToDay(dto AddMealToDayDTO) (*models.DayMeal, error) {
 	// Проверяем существование питания
 	_, err := s.repo.FindByID(dto.NutritionID)
@@ -177,20 +174,18 @@ func (s *NutritionService) AddMealToDay(dto AddMealToDayDTO) (*models.DayMeal, e
 }
 
 // GetFullWeeklyMenu - получить полное меню с днями и приемами пищи
-// internal/service/nutrition_service.go
 func (s *NutritionService) GetFullWeeklyMenu(menuID uint) (*models.WeeklyMenu, error) {
 	menu, err := s.weeklyMenuRepo.FindByID(menuID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Получаем дни (предполагаем, что возвращает []*models.MenuDay)
+	// Получаем дни
 	days, err := s.weeklyMenuRepo.FindDaysByMenuID(menuID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Преобразуем []*models.MenuDay в []models.MenuDay
 	var daysSlice []models.MenuDay
 	for _, dayPtr := range days {
 		if dayPtr != nil {
@@ -206,7 +201,6 @@ func (s *NutritionService) GetFullWeeklyMenu(menuID uint) (*models.WeeklyMenu, e
 			continue
 		}
 
-		// Преобразуем []*models.DayMeal в []models.DayMeal
 		var mealsSlice []models.DayMeal
 		for _, mealPtr := range meals {
 			if mealPtr != nil {

@@ -21,7 +21,7 @@ type AdminHandler struct {
 	sendTextFunc         func(chatID int64, text string)
 	sendTextWithKeyboard func(chatID int64, text string, rows [][]tgbotapi.InlineKeyboardButton)
 
-	// Callbacks (переносим из BotApp)
+	// Callbacks
 	adminCallbacks map[string]func(*tgbotapi.CallbackQuery)
 }
 
@@ -41,7 +41,6 @@ func (ah *AdminHandler) RegisterAdminCallbacks() {
 	}
 
 	ah.adminCallbacks["noop"] = func(c *tgbotapi.CallbackQuery) {
-		// Ничего не делаем
 	}
 
 	ah.adminCallbacks["admin_nutrition"] = func(c *tgbotapi.CallbackQuery) {
@@ -75,7 +74,6 @@ func (ah *AdminHandler) RegisterAdminCallbacks() {
 	}
 }
 
-// Добавляем в AdminHandler:
 func (ah *AdminHandler) ShowAdminPanel(chatID int64) {
 	log.Printf("[ADMIN DEBUG] ShowAdminPanel called for chat %d", chatID)
 	log.Printf("[ADMIN DEBUG] sendTextFunc is nil? %v", ah.sendTextFunc == nil)
@@ -390,7 +388,6 @@ func (ah *AdminHandler) ShowWeeklyMenuDetails(chatID int64, menuID uint) {
 	} else {
 		msg += "📋 *Дни недели:*\n\n"
 
-		// Исправляем: создаем map с использованием не-указателей
 		daysMap := make(map[int]models.MenuDay)
 		for _, day := range menu.Days {
 			daysMap[day.DayNumber] = day
@@ -442,7 +439,6 @@ func (ah *AdminHandler) ShowWeeklyMenuDetails(chatID int64, menuID uint) {
 	ah.sendTextWithKeyboard(chatID, msg, rows)
 }
 
-// Также нужно добавить метод showNutritionListForSelection если он используется админом
 func (ah *AdminHandler) ShowNutritionListForSelection(chatID int64) {
 	nutritionList, err := ah.nutritionService.ListNutrition()
 	if err != nil {
@@ -511,7 +507,7 @@ func (ah *AdminHandler) HandleAdminCallback(callback *tgbotapi.CallbackQuery) {
 		}
 
 		state := &AdminState{
-			Action:   "add_day_to_menu", // Исправляем на правильный action
+			Action:   "add_day_to_menu",
 			EntityID: uint(id),
 			Step:     1,
 			TempData: make(map[string]interface{}),
@@ -622,7 +618,7 @@ func (ah *AdminHandler) HandleAdminCallback(callback *tgbotapi.CallbackQuery) {
 
 		if strings.HasPrefix(data, "admin_edit_training_") {
 			state := &AdminState{
-				Action:   "edit_training", // Исправляем на правильный action
+				Action:   "edit_training",
 				EntityID: uint(id),
 				Step:     1,
 				TempData: make(map[string]interface{}),

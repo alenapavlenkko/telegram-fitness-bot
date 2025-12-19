@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	// -----------------------
+
 	// ENV
 	if err := godotenv.Load(); err != nil {
 		utils.Log.Info("No .env file found")
@@ -25,7 +25,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// -----------------------
 	// DATABASE
 	db, err := database.NewPostgres(dsn)
 	if err != nil {
@@ -40,15 +39,14 @@ func main() {
 		&models.TrainingProgram{},
 		&models.NutritionPlan{},
 		&models.User{},
-		&models.WeeklyMenu{}, // Добавьте эту модель
-		&models.MenuDay{},    // Добавьте эту модель
-		&models.DayMeal{},    // Добавьте эту модель
+		&models.WeeklyMenu{},
+		&models.MenuDay{},
+		&models.DayMeal{},
 	); err != nil {
 		utils.Log.Error("Failed to migrate database: " + err.Error())
 		os.Exit(1)
 	}
 
-	// -----------------------
 	// REPOSITORIES
 	trainingRepo := repository.NewTrainingRepo(db)
 	categoryRepo := repository.NewCategoryRepo(db)
@@ -56,14 +54,12 @@ func main() {
 	weeklyMenuRepo := repository.NewWeeklyMenuRepo(db)
 	userRepo := repository.NewUserRepo(db)
 
-	// -----------------------
 	// SERVICES
 	trainingService := service.NewTrainingService(trainingRepo)
 	categoryService := service.NewCategoryService(categoryRepo)
 	nutritionService := service.NewNutritionService(nutritionRepo, weeklyMenuRepo)
 	userService := service.NewUserService(userRepo)
 
-	// -----------------------
 	// BOT
 	token := os.Getenv("TELEGRAM_TOKEN")
 	if token == "" {
@@ -72,7 +68,7 @@ func main() {
 	}
 
 	adminIDs := bot.ParseAdminIDs(os.Getenv("ADMIN_IDS"))
-	utils.Log.Info("Loaded admin IDs") // или добавьте отдельную функцию форматирования
+	utils.Log.Info("Loaded admin IDs")
 
 	botApp, err := bot.NewBotApp(
 		token,
