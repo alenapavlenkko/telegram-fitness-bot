@@ -71,4 +71,4 @@ cp .env.example .env
 Запустить сервисы:
 docker-compose up -d
 Проверить запуск:
-docker-compose logs -f bot
+docker-compose logs -f bot# Test comment
