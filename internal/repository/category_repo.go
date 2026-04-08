@@ -5,6 +5,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// можно убрать
 type CategoryRepository interface {
 	Create(category *models.Category) (*models.Category, error)
 	FindAll() ([]*models.Category, error)

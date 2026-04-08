@@ -16,13 +16,14 @@ import (
 type BotApp struct {
 	API *tgbotapi.BotAPI
 
-	Admins   []int64
-	Handlers map[string]func(tgbotapi.Update)
-
+	Admins           []int64
+	Handlers         map[string]func(tgbotapi.Update)
 	trainingService  *service.TrainingService
 	nutritionService *service.NutritionService
 	categoryService  *service.CategoryService
 	userService      *service.UserService
+	weightService    *service.WeightService
+	userStates       map[int64]string
 
 	// Админ-панель
 	adminHandler *admin.AdminHandler
@@ -35,6 +36,7 @@ func NewBotApp(
 	nutritionService *service.NutritionService,
 	categoryService *service.CategoryService,
 	userService *service.UserService,
+	weightService *service.WeightService,
 	adminIDs []int64,
 ) (*BotApp, error) {
 	botAPI, err := tgbotapi.NewBotAPI(token)
@@ -49,6 +51,8 @@ func NewBotApp(
 		nutritionService: nutritionService,
 		categoryService:  categoryService,
 		userService:      userService,
+		weightService:    weightService,
+		userStates:       make(map[int64]string),
 	}
 
 	// Создаем админ-хендлер с функцией отправки сообщений
@@ -158,6 +162,7 @@ func (b *BotApp) handleCommand(update tgbotapi.Update) {
 *Поддержка:* Если возникли проблемы, свяжитесь с администратором.`
 
 		b.sendText(chatID, helpMsg)
+
 	case "admin":
 		log.Printf("[DEBUG] Admin command received from user ID: %d", update.Message.From.ID)
 		log.Printf("[DEBUG] Admin list: %v", b.Admins)
@@ -171,6 +176,13 @@ func (b *BotApp) handleCommand(update tgbotapi.Update) {
 
 		log.Printf("[DEBUG] Calling ShowAdminPanel for chat %d", chatID)
 		b.adminHandler.ShowAdminPanel(chatID)
+
+	case "log_weight":
+		b.sendText(chatID, "⚖️ Введите ваш вес в кг (например: 75.5):")
+		b.userStates[chatID] = "awaiting_weight"
+	case "stats":
+		b.handleStatsCommand(update, chatID)
+
 	case "checkdb":
 		if b.isAdmin(int64(update.Message.From.ID)) {
 			b.checkDatabase(chatID)
@@ -197,6 +209,57 @@ func (b *BotApp) handleCommand(update tgbotapi.Update) {
 	default:
 		b.sendText(chatID, "Неизвестная команда. Используйте /help")
 	}
+}
+func (b *BotApp) handleStatsCommand(update tgbotapi.Update, chatID int64) {
+	user, err := b.authenticateUser(update)
+	if err != nil {
+		b.sendText(chatID, "❌ Ошибка авторизации")
+		return
+	}
+
+	logs, err := b.weightService.GetUserHistory(uint(user.ID))
+	if err != nil || len(logs) == 0 {
+		b.sendText(chatID, "📊 У вас пока нет записей о весе.\n\nИспользуйте /log_weight чтобы записать первый вес!")
+		return
+	}
+
+	// Статистика
+	var min, max, sum float64
+	min = logs[0].Weight
+	max = logs[0].Weight
+
+	for _, log := range logs {
+		sum += log.Weight
+		if log.Weight < min {
+			min = log.Weight
+		}
+		if log.Weight > max {
+			max = log.Weight
+		}
+	}
+
+	avg := sum / float64(len(logs))
+	current := logs[len(logs)-1].Weight
+	start := logs[0].Weight
+	change := start - current
+
+	msg := fmt.Sprintf("📊 *Ваша статистика веса*\n\n"+
+		"⚖️ Текущий вес: *%.1f кг*\n"+
+		"📍 Начальный вес: *%.1f кг*\n"+
+		"📈 Изменение: *%.1f кг*\n"+
+		"📊 Мин: *%.1f кг*\n"+
+		"📊 Макс: *%.1f кг*\n"+
+		"📈 Средний: *%.1f кг*\n"+
+		"📅 Всего записей: *%d*\n",
+		current, start, change, min, max, avg, len(logs))
+
+	if change > 0 {
+		msg += "\n🎉 Отлично! Вы сбросили вес!"
+	} else if change < 0 {
+		msg += "\n💪 Вы набираете массу!"
+	}
+
+	b.sendText(chatID, msg)
 }
 
 func (b *BotApp) checkDatabase(chatID int64) {
@@ -236,6 +299,35 @@ func (b *BotApp) handleRegularMessage(update tgbotapi.Update) {
 		// АДМИНСКИЕ ДЕЙСТВИЯ
 		b.adminHandler.HandleAdminActions(chatID, userID, state, text)
 		return
+	}
+	if userState, exists := b.userStates[userID]; exists {
+		switch userState {
+		case "awaiting_weight":
+			weight, err := strconv.ParseFloat(text, 64)
+			if err != nil || weight <= 20 || weight >= 300 {
+				b.sendText(chatID, "❌ Введите корректный вес (20-300 кг), например: 75.5")
+				return
+			}
+
+			// Получаем пользователя из БД
+			user, err := b.authenticateUser(update)
+			if err != nil {
+				b.sendText(chatID, "❌ Ошибка авторизации")
+				return
+			}
+
+			// Сохраняем вес через сервис
+			err = b.weightService.LogWeight(uint(user.ID), weight)
+			if err != nil {
+				b.sendText(chatID, "❌ Ошибка сохранения: "+err.Error())
+			} else {
+				b.sendText(chatID, fmt.Sprintf("✅ Вес *%.1f кг* успешно записан!", weight))
+			}
+
+			// Удаляем состояние
+			delete(b.userStates, userID)
+			return
+		}
 	}
 
 	// 2. Проверяем, является ли пользователь админом

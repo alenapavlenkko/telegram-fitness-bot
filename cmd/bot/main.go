@@ -40,9 +40,10 @@ func main() {
 		&models.TrainingProgram{},
 		&models.NutritionPlan{},
 		&models.User{},
-		&models.WeeklyMenu{}, // Добавьте эту модель
-		&models.MenuDay{},    // Добавьте эту модель
-		&models.DayMeal{},    // Добавьте эту модель
+		&models.WeeklyMenu{},
+		&models.MenuDay{},
+		&models.DayMeal{},
+		&models.WeightLog{},
 	); err != nil {
 		utils.Log.Error("Failed to migrate database: " + err.Error())
 		os.Exit(1)
@@ -55,6 +56,7 @@ func main() {
 	nutritionRepo := repository.NewNutritionRepo(db)
 	weeklyMenuRepo := repository.NewWeeklyMenuRepo(db)
 	userRepo := repository.NewUserRepo(db)
+	weightRepo := repository.NewWeightRepository(db)
 
 	// -----------------------
 	// SERVICES
@@ -62,6 +64,7 @@ func main() {
 	categoryService := service.NewCategoryService(categoryRepo)
 	nutritionService := service.NewNutritionService(nutritionRepo, weeklyMenuRepo)
 	userService := service.NewUserService(userRepo)
+	weightService := service.NewWeightService(weightRepo)
 
 	// -----------------------
 	// BOT
@@ -80,6 +83,7 @@ func main() {
 		nutritionService,
 		categoryService,
 		userService,
+		weightService,
 		adminIDs,
 	)
 	if err != nil {
