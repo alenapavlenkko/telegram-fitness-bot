@@ -8,7 +8,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func StartServer(ts *service.TrainingService) {
+type ServerDeps struct {
+	TrainingService  *service.TrainingService
+	NutritionService *service.NutritionService
+}
+
+func StartServer(deps ServerDeps) {
 	r := gin.Default()
 
 	r.Use(func(c *gin.Context) {
@@ -36,12 +41,43 @@ func StartServer(ts *service.TrainingService) {
 	})
 
 	r.GET("/api/trainings", func(c *gin.Context) {
-		trainings, err := ts.ListTrainings()
+		trainings, err := deps.TrainingService.ListTrainings()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		c.JSON(http.StatusOK, trainings)
+	})
+
+	r.GET("/api/nutrition", func(c *gin.Context) {
+		nutrition, err := deps.NutritionService.ListNutrition()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, nutrition)
+	})
+
+	r.GET("/api/stats", func(c *gin.Context) {
+		trainings, _ := deps.TrainingService.ListTrainings()
+		nutrition, _ := deps.NutritionService.ListNutrition()
+
+		totalMinutes := 0
+		for _, t := range trainings {
+			totalMinutes += t.Duration
+		}
+
+		totalCalories := 0
+		for _, n := range nutrition {
+			totalCalories += n.Calories
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"trainingsCount": len(trainings),
+			"nutritionCount": len(nutrition),
+			"totalMinutes":   totalMinutes,
+			"totalCalories":  totalCalories,
+		})
 	})
 
 	fmt.Println("🌐 Сервер запущен: http://localhost:8080/app")

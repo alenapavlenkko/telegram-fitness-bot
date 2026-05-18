@@ -1,10 +1,17 @@
 import * as React from 'react'
 
 type Training = {
+    ID?: number
     id?: number
-    title: string
+    Title?: string
+    title?: string
+    Description?: string
     description?: string
-    duration: number
+    Difficulty?: string
+    difficulty?: string
+    Duration?: number
+    duration?: number
+    YouTubeLink?: string
     youtubeLink?: string
 }
 
@@ -60,38 +67,49 @@ export default function Trainings() {
                     <p className="muted">Тренировок пока нет</p>
                 ) : (
                     <div className="training-list">
-                        {data.map((t, i) => (
-                            <article key={t.id ?? i} className="training-card">
-                                <div className="training-top">
-                                    <div>
-                                        <h3 className="training-title">{t.title}</h3>
-                                        <p className="training-duration">⏱ {t.duration} мин</p>
+                        {data.map((t, i) => {
+                            const id = t.ID ?? t.id ?? i
+                            const title = t.Title ?? t.title ?? 'Без названия'
+                            const description = t.Description ?? t.description ?? ''
+                            const duration = t.Duration ?? t.duration ?? 0
+                            const difficulty = t.Difficulty ?? t.difficulty ?? 'Не указано'
+                            const video = t.YouTubeLink ?? t.youtubeLink ?? ''
+
+                            return (
+                                <article key={id} className="training-card">
+                                    <div className="training-top">
+                                        <div>
+                                            <h3 className="training-title">{title}</h3>
+                                            <p className="training-duration">
+                                                ⏱ {duration} мин · {difficulty}
+                                            </p>
+                                        </div>
+                                        <div className="training-badge">Workout</div>
                                     </div>
-                                    <div className="training-badge">Workout</div>
-                                </div>
 
-                                {t.description && (
-                                    <p className="training-description">{t.description}</p>
-                                )}
-
-                                <div className="training-actions">
-                                    {t.youtubeLink ? (
-                                        <a
-                                            className="primary-btn"
-                                            href={t.youtubeLink}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                        >
-                                            Смотреть
-                                        </a>
-                                    ) : (
-                                        <button className="primary-btn" disabled>
-                                            Видео скоро
-                                        </button>
+                                    {description && (
+                                        <p className="training-description">{description}</p>
                                     )}
-                                </div>
-                            </article>
-                        ))}
+
+                                    <div className="training-actions">
+                                        {video ? (
+                                            <a
+                                                className="primary-btn"
+                                                href={video}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                            >
+                                                Смотреть видео
+                                            </a>
+                                        ) : (
+                                            <button className="primary-btn" disabled>
+                                                Видео скоро
+                                            </button>
+                                        )}
+                                    </div>
+                                </article>
+                            )
+                        })}
                     </div>
                 )}
             </section>

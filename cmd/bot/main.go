@@ -99,7 +99,10 @@ func main() {
 	}
 
 	fmt.Println("🚀 Попытка запуска сервера на порту 8080...")
-	go api.StartServer(trainingService)
+	go api.StartServer(api.ServerDeps{
+		TrainingService:  trainingService,
+		NutritionService: nutritionService,
+	})
 
 	utils.Log.Info("Telegram bot starting...")
 	botApp.Run()
