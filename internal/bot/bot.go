@@ -84,15 +84,13 @@ func (b *BotApp) Run() {
 	log.Println("🤖 Bot started")
 
 	for update := range updates {
-		// Обработка CallbackQuery
+		// Обработка callback-кнопок
 		if update.CallbackQuery != nil {
 			callback := update.CallbackQuery
 
-			// Проверяем, админ или обычный пользователь
 			if b.isAuthorized(callback.From.ID, "admin") {
 				b.adminHandler.HandleAdminCallback(callback)
 			} else {
-				// Обычные пользователи не должны получать callback
 				b.answerCallback(callback.ID, "⛔ Доступ запрещен")
 			}
 			continue
@@ -102,13 +100,13 @@ func (b *BotApp) Run() {
 			continue
 		}
 
-		// Обработка команд
+		// Команды
 		if update.Message.IsCommand() {
 			b.handleCommand(update)
 			continue
 		}
 
-		// Обработка обычных сообщений
+		// Обычные сообщения
 		b.handleRegularMessage(update)
 	}
 }

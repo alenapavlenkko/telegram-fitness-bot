@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
+	"github.com/alenapavlenkko/telegramfitnes/internal/api"
 	"github.com/alenapavlenkko/telegramfitnes/internal/bot"
 	"github.com/alenapavlenkko/telegramfitnes/internal/database"
 	"github.com/alenapavlenkko/telegramfitnes/internal/models"
@@ -86,11 +88,12 @@ func main() {
 		weightService,
 		adminIDs,
 	)
+	_ = botApp
 	if err != nil {
 		utils.Log.Error("Failed to create bot: " + err.Error())
 		os.Exit(1)
 	}
 
-	utils.Log.Info("Telegram bot starting...")
-	botApp.Run()
+	fmt.Println("🚀 Попытка запуска сервера на порту 8080...")
+	api.StartServer(trainingService)
 }
