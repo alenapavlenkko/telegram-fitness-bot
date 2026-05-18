@@ -50,6 +50,11 @@ func main() {
 		utils.Log.Error("Failed to migrate database: " + err.Error())
 		os.Exit(1)
 	}
+	if err := database.SeedData(db); err != nil {
+		utils.Log.Error("Failed to seed database: " + err.Error())
+		os.Exit(1)
+	}
+	utils.Log.Info("Seed data loaded")
 
 	// -----------------------
 	// REPOSITORIES
@@ -88,12 +93,14 @@ func main() {
 		weightService,
 		adminIDs,
 	)
-	_ = botApp
 	if err != nil {
 		utils.Log.Error("Failed to create bot: " + err.Error())
 		os.Exit(1)
 	}
 
 	fmt.Println("🚀 Попытка запуска сервера на порту 8080...")
-	api.StartServer(trainingService)
+	go api.StartServer(trainingService)
+
+	utils.Log.Info("Telegram bot starting...")
+	botApp.Run()
 }

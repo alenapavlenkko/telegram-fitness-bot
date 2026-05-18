@@ -12,7 +12,6 @@ services:
       - pgdata:/var/lib/postgresql/data
     networks:
       - fitlife_net
-    # ВАЖНО: добавьте healthcheck
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U fituser -d fitlife"]
       interval: 5s
@@ -29,10 +28,12 @@ services:
       DATABASE_URL: postgres://fituser:2005@postgres:5432/fitlife?sslmode=disable
     depends_on:
       postgres:
-        condition: service_healthy  # Ждем пока БД станет здоровой
+        condition: service_healthy
+    ports:
+      - "8080:8080"
     networks:
       - fitlife_net
-    restart: on-failure  # Перезапуск при ошибке
+    restart: on-failure
 
 volumes:
   pgdata:
