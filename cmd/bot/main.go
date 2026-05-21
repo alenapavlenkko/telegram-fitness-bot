@@ -102,6 +102,8 @@ func main() {
 	go api.StartServer(api.ServerDeps{
 		TrainingService:  trainingService,
 		NutritionService: nutritionService,
+		UserService:      userService,
+		WeightService:    weightService,
 	})
 
 	utils.Log.Info("Telegram bot starting...")

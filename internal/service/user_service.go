@@ -37,3 +37,46 @@ func (s *UserService) GetUsersCount() (int64, error) {
 func (s *UserService) GetAllUsers() ([]*models.User, error) {
 	return s.repo.FindAll()
 }
+
+type UpdateProfileDTO struct {
+	TelegramID   int64   `json:"telegramId"`
+	Name         string  `json:"name"`
+	Age          int     `json:"age"`
+	Gender       string  `json:"gender"`
+	Height       float64 `json:"height"`
+	Weight       float64 `json:"weight"`
+	Goal         string  `json:"goal"`
+	Activity     string  `json:"activity"`
+	FitnessLevel string  `json:"fitnessLevel"`
+	TargetWeight float64 `json:"targetWeight"`
+}
+
+func (s *UserService) UpdateProfile(dto UpdateProfileDTO) (*models.User, error) {
+	user, err := s.repo.FindByTelegramID(dto.TelegramID)
+	if err != nil {
+		user = &models.User{
+			TelegramID: dto.TelegramID,
+			Role:       "user",
+		}
+	}
+
+	user.Name = dto.Name
+	user.Age = dto.Age
+	user.Gender = dto.Gender
+	user.Height = dto.Height
+	user.Weight = dto.Weight
+	user.Goal = dto.Goal
+	user.Activity = dto.Activity
+	user.FitnessLevel = dto.FitnessLevel
+	user.TargetWeight = dto.TargetWeight
+
+	if user.ID == 0 {
+		return s.repo.Create(user)
+	}
+
+	if err := s.repo.Update(user); err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}

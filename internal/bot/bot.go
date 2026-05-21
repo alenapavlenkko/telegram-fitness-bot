@@ -24,6 +24,7 @@ type BotApp struct {
 	userService      *service.UserService
 	weightService    *service.WeightService
 	userStates       map[int64]string
+	calculatorData   map[int64]map[string]string
 
 	// Админ-панель
 	adminHandler *admin.AdminHandler
@@ -37,6 +38,7 @@ func NewBotApp(
 	categoryService *service.CategoryService,
 	userService *service.UserService,
 	weightService *service.WeightService,
+
 	adminIDs []int64,
 ) (*BotApp, error) {
 	botAPI, err := tgbotapi.NewBotAPI(token)
@@ -53,6 +55,7 @@ func NewBotApp(
 		userService:      userService,
 		weightService:    weightService,
 		userStates:       make(map[int64]string),
+		calculatorData:   make(map[int64]map[string]string),
 	}
 
 	// Создаем админ-хендлер с функцией отправки сообщений
@@ -290,31 +293,28 @@ func (b *BotApp) handleRegularMessage(update tgbotapi.Update) {
 
 	log.Printf("Regular message: userID=%d, text='%s'", userID, text)
 
-	// 1. Сначала проверяем состояние админ-панели
 	state, isAdminAction := b.adminHandler.GetState(userID)
 	if isAdminAction {
 		log.Println("Admin action detected")
-		// АДМИНСКИЕ ДЕЙСТВИЯ
 		b.adminHandler.HandleAdminActions(chatID, userID, state, text)
 		return
 	}
+
 	if userState, exists := b.userStates[userID]; exists {
 		switch userState {
 		case "awaiting_weight":
 			weight, err := strconv.ParseFloat(text, 64)
 			if err != nil || weight <= 20 || weight >= 300 {
-				b.sendText(chatID, "❌ Введите корректный вес (20-300 кг), например: 75.5")
+				b.sendText(chatID, "❌ Введите корректный вес \\(20-300 кг\\), например: 75.5")
 				return
 			}
 
-			// Получаем пользователя из БД
 			user, err := b.authenticateUser(update)
 			if err != nil {
 				b.sendText(chatID, "❌ Ошибка авторизации")
 				return
 			}
 
-			// Сохраняем вес через сервис
 			err = b.weightService.LogWeight(uint(user.ID), weight)
 			if err != nil {
 				b.sendText(chatID, "❌ Ошибка сохранения: "+err.Error())
@@ -322,21 +322,101 @@ func (b *BotApp) handleRegularMessage(update tgbotapi.Update) {
 				b.sendText(chatID, fmt.Sprintf("✅ Вес *%.1f кг* успешно записан!", weight))
 			}
 
-			// Удаляем состояние
+			delete(b.userStates, userID)
+			return
+
+		case "awaiting_calculator":
+			b.handleCalculatorInput(chatID, text)
 			delete(b.userStates, userID)
 			return
 		}
 	}
+	if state, exists := b.userStates[userID]; exists {
 
-	// 2. Проверяем, является ли пользователь админом
+		switch state {
+
+		case "calc_weight":
+			b.calculatorData[userID]["weight"] = text
+			b.userStates[userID] = "calc_height"
+			b.sendText(chatID, "📏 Введите рост в см:")
+			return
+
+		case "calc_height":
+			b.calculatorData[userID]["height"] = text
+			b.userStates[userID] = "calc_age"
+			b.sendText(chatID, "🎂 Введите возраст:")
+			return
+
+		case "calc_age":
+			b.calculatorData[userID]["age"] = text
+			b.userStates[userID] = "calc_gender"
+
+			keyboard := tgbotapi.NewReplyKeyboard(
+				tgbotapi.NewKeyboardButtonRow(
+					tgbotapi.NewKeyboardButton("👨 Мужской"),
+					tgbotapi.NewKeyboardButton("👩 Женский"),
+				),
+			)
+
+			msg := tgbotapi.NewMessage(chatID, "Выберите пол:")
+			msg.ReplyMarkup = keyboard
+			b.API.Send(msg)
+
+			return
+
+		case "calc_gender":
+			b.calculatorData[userID]["gender"] = text
+			b.userStates[userID] = "calc_activity"
+
+			keyboard := tgbotapi.NewReplyKeyboard(
+				tgbotapi.NewKeyboardButtonRow(
+					tgbotapi.NewKeyboardButton("🛋 Низкая"),
+					tgbotapi.NewKeyboardButton("🚶 Средняя"),
+					tgbotapi.NewKeyboardButton("🏃 Высокая"),
+				),
+			)
+
+			msg := tgbotapi.NewMessage(chatID, "Выберите активность:")
+			msg.ReplyMarkup = keyboard
+			b.API.Send(msg)
+
+			return
+
+		case "calc_activity":
+			b.calculatorData[userID]["activity"] = text
+			b.userStates[userID] = "calc_goal"
+
+			keyboard := tgbotapi.NewReplyKeyboard(
+				tgbotapi.NewKeyboardButtonRow(
+					tgbotapi.NewKeyboardButton("📉 Похудение"),
+					tgbotapi.NewKeyboardButton("⚖ Поддержание"),
+					tgbotapi.NewKeyboardButton("📈 Набор массы"),
+				),
+			)
+
+			msg := tgbotapi.NewMessage(chatID, "Выберите цель:")
+			msg.ReplyMarkup = keyboard
+			b.API.Send(msg)
+
+			return
+
+		case "calc_goal":
+			b.calculatorData[userID]["goal"] = text
+
+			b.finishCalculator(chatID, userID)
+
+			delete(b.userStates, userID)
+
+			return
+		}
+	}
+
 	if b.isAdmin(userID) {
 		log.Println("Admin regular message")
-		// Админ, но не в режиме админ-панели
 		b.handleAdminRegularMessage(chatID, text)
 		return
 	}
 
-	// 3. ОБЫЧНЫЕ ПОЛЬЗОВАТЕЛИ
 	log.Println("User action")
 	b.handleUserActions(chatID, text)
 }
@@ -344,37 +424,58 @@ func (b *BotApp) handleRegularMessage(update tgbotapi.Update) {
 // Обработка обычных сообщений админа (не в админ-панели)
 func (b *BotApp) handleAdminRegularMessage(chatID int64, text string) {
 	log.Printf("[handleAdminRegularMessage] chatID=%d, text='%s'", chatID, text)
-	// Админ может вводить специальные команды
+
 	switch text {
 	case "/panel":
 		b.adminHandler.ShowAdminPanel(chatID)
+
 	case "/trainings":
 		b.adminHandler.ShowTrainingsAdmin(chatID)
+
 	case "/nutrition":
 		b.adminHandler.ShowNutritionAdmin(chatID)
+
 	case "/categories":
 		b.adminHandler.ShowCategoriesAdmin(chatID)
-	case "🏋️ Тренировки":
-		// Админ тоже может смотреть тренировки как обычный пользователь
-		log.Println("[handleAdminRegularMessage] Showing trainings for admin")
-		b.showTrainingsForUser(chatID)
-	case "🍎 Питание":
-		log.Println("[handleAdminRegularMessage] Showing nutrition for admin")
-		b.showNutritionForUser(chatID)
-	case "📂 Категории":
-		log.Println("[handleAdminRegularMessage] Showing categories for admin")
-		b.showCategoriesForUser(chatID)
-	case "ℹ️ Помощь":
-		b.sendText(chatID, "🏃‍♀️ Fitness Bot Помощь:\n\nВыберите раздел в меню:\n"+
-			"• Тренировки - программы упражнений\n"+
-			"• Питание - планы питания\n"+
-			"• Категории - фильтрация контента\n\n"+
-			"Используйте /start для возврата в меню")
-		// В handleAdminRegularMessage добавьте:
+
 	case "/foodlist":
 		b.adminHandler.ShowNutritionListForSelection(chatID)
+
+	case "🏋️ Тренировки":
+		b.showTrainingsForUser(chatID)
+
+	case "🍎 Питание":
+		b.showNutritionForUser(chatID)
+
+	case "📂 Категории":
+		b.showCategoriesForUser(chatID)
+
+	case "📊 Статистика":
+		b.showUserStats(chatID)
+
+	case "👤 Профиль":
+		b.showProfile(chatID)
+
+	case "🧮 Калькулятор":
+		b.startCalculator(chatID)
+
+	case "⚖️ Записать вес":
+		b.sendText(chatID, "⚖️ Введите ваш вес в кг, например: 55.5")
+		b.userStates[chatID] = "awaiting_weight"
+
+	case "ℹ️ Помощь":
+		b.sendText(chatID,
+			"📚 *Помощь*\n\n"+
+				"Выберите раздел в меню:\n"+
+				"🏋️ Тренировки\n"+
+				"🍎 Питание\n"+
+				"📊 Статистика\n"+
+				"👤 Профиль\n"+
+				"🧮 Калькулятор\n"+
+				"⚖️ Записать вес",
+		)
+
 	default:
-		// Если админ просто что-то пишет, показываем главное меню
 		b.showMainMenu(chatID)
 	}
 }
@@ -386,38 +487,30 @@ func (b *BotApp) handleUserActions(chatID int64, text string) {
 
 	switch text {
 	case "🏋️ Тренировки":
-		log.Println("[handleUserActions] Calling showTrainingsForUser")
 		b.showTrainingsForUser(chatID)
+
 	case "🍎 Питание":
-		log.Println("[handleUserActions] Calling showNutritionForUser")
 		b.showNutritionForUser(chatID)
+
 	case "📂 Категории":
-		log.Println("[handleUserActions] Calling showCategoriesForUser")
 		b.showCategoriesForUser(chatID)
+
+	case "📊 Статистика":
+		b.showUserStats(chatID)
+
+	case "👤 Профиль":
+		b.showProfile(chatID)
+
+	case "🧮 Калькулятор":
+		b.startCalculator(chatID)
+
+	case "⚖️ Записать вес":
+		b.sendText(chatID, "⚖️ Введите ваш вес в кг, например: 55.5")
+		b.userStates[chatID] = "awaiting_weight"
+
 	case "ℹ️ Помощь":
-		helpMsg := `📚 *Помощь по использованию Fitness Bot*
+		b.sendText(chatID, "📚 *Помощь*\n\nВыберите раздел в меню:\n🏋️ Тренировки\n🍎 Питание\n📊 Статистика\n👤 Профиль\n🧮 Калькулятор\n⚖️ Записать вес")
 
-*Как пользоваться ботом:*
-🏋️ *Тренировки* - Готовые программы упражнений с видео
-🍎 *Питание* - Планы питания и недельные меню
-📂 *Категории* - Фильтрация контента по темам
-
-*Основные команды:*
-/start - Главное меню
-/help - Подробная справка
-
-*Советы:*
-• Регулярно проверяйте обновления
-• Составляйте свое меню на неделю
-• Следуйте программам тренировок
-
-*Нужна помощь?*
-Используйте команду /help для подробной информации
-или свяжитесь с администратором.`
-
-		b.sendText(chatID, helpMsg)
-	case "/testtrainings":
-		b.testTrainings(chatID)
 	default:
 		b.showMainMenu(chatID)
 	}
@@ -617,11 +710,17 @@ func (b *BotApp) showMainMenu(chatID int64) {
 			tgbotapi.NewKeyboardButton("🍎 Питание"),
 		),
 		tgbotapi.NewKeyboardButtonRow(
-			tgbotapi.NewKeyboardButton("📂 Категории"),
+			tgbotapi.NewKeyboardButton("📊 Статистика"),
+			tgbotapi.NewKeyboardButton("👤 Профиль"),
+		),
+		tgbotapi.NewKeyboardButtonRow(
+			tgbotapi.NewKeyboardButton("🧮 Калькулятор"),
+			tgbotapi.NewKeyboardButton("⚖️ Записать вес"),
+		),
+		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButton("ℹ️ Помощь"),
 		),
 	)
-
 	// Добавляем настройки клавиатуры
 	keyboard.ResizeKeyboard = true   // Клавиатура занимает меньше места
 	keyboard.OneTimeKeyboard = false // Клавиатура остается постоянно
@@ -781,4 +880,243 @@ func (b *BotApp) showNutritionListForSelection(chatID int64) {
 
 	msg += "\nПри добавлении приема пищи введите ID блюда из этого списка\\."
 	b.sendText(chatID, msg)
+	b.showMainMenu(chatID)
+}
+
+func (b *BotApp) showUserStats(chatID int64) {
+	user, err := b.userService.GetUserByTelegramID(chatID)
+	if err != nil {
+		b.sendText(chatID, "📊 Статистика пока недоступна.\n\nСначала нажмите /start или заполните профиль.")
+		return
+	}
+
+	logs, err := b.weightService.GetUserHistory(uint(user.ID))
+	if err != nil || len(logs) == 0 {
+		b.sendText(chatID, "📊 У вас пока нет записей веса.\n\nНажмите «⚖️ Записать вес», чтобы добавить первую запись.")
+		return
+	}
+
+	var min, max, sum float64
+	min = logs[0].Weight
+	max = logs[0].Weight
+
+	for _, item := range logs {
+		sum += item.Weight
+		if item.Weight < min {
+			min = item.Weight
+		}
+		if item.Weight > max {
+			max = item.Weight
+		}
+	}
+
+	start := logs[0].Weight
+	current := logs[len(logs)-1].Weight
+	avg := sum / float64(len(logs))
+	change := start - current
+
+	msg := fmt.Sprintf(
+		"📊 *Ваша статистика*\n\n"+
+			"⚖️ Текущий вес: *%.1f кг*\n"+
+			"📍 Начальный вес: *%.1f кг*\n"+
+			"🎯 Желаемый вес: *%.1f кг*\n"+
+			"📉 Изменение: *%.1f кг*\n"+
+			"📊 Минимум: *%.1f кг*\n"+
+			"📊 Максимум: *%.1f кг*\n"+
+			"📈 Средний вес: *%.1f кг*\n"+
+			"📝 Записей: *%d*",
+		current,
+		start,
+		user.TargetWeight,
+		change,
+		min,
+		max,
+		avg,
+		len(logs),
+	)
+
+	b.sendText(chatID, msg)
+}
+
+func (b *BotApp) showProfile(chatID int64) {
+	user, err := b.userService.GetUserByTelegramID(chatID)
+	if err != nil {
+		b.sendText(chatID, "👤 Профиль пока не заполнен.\n\nОткройте Mini App и заполните данные в разделе «Профиль».")
+		return
+	}
+
+	msg := fmt.Sprintf(
+		"👤 *Ваш профиль*\n\n"+
+			"Имя: *%s*\n"+
+			"Возраст: *%d*\n"+
+			"Рост: *%.0f см*\n"+
+			"Вес: *%.1f кг*\n"+
+			"Цель: *%s*\n"+
+			"Активность: *%s*\n"+
+			"Уровень: *%s*\n"+
+			"Желаемый вес: *%.1f кг*",
+		user.Name,
+		user.Age,
+		user.Height,
+		user.Weight,
+		user.Goal,
+		user.Activity,
+		user.FitnessLevel,
+		user.TargetWeight,
+	)
+
+	b.sendText(chatID, msg)
+}
+
+func (b *BotApp) startCalculator(chatID int64) {
+	b.sendText(chatID,
+		"🧮 *Калькулятор калорий и ИМТ*\n\n"+
+			"Введите ваш вес в кг:")
+
+	b.userStates[chatID] = "calc_weight"
+	b.calculatorData[chatID] = make(map[string]string)
+}
+
+func (b *BotApp) handleCalculatorInput(chatID int64, text string) {
+	parts := strings.Fields(text)
+	if len(parts) != 6 {
+		b.sendText(chatID, "❌ Неверный формат.\n\nПример:\n`55 165 20 female medium loss`")
+		return
+	}
+
+	weight, err1 := strconv.ParseFloat(parts[0], 64)
+	height, err2 := strconv.ParseFloat(parts[1], 64)
+	age, err3 := strconv.Atoi(parts[2])
+	gender := parts[3]
+	activity := parts[4]
+	goal := parts[5]
+
+	if err1 != nil || err2 != nil || err3 != nil || weight <= 0 || height <= 0 || age <= 0 {
+		b.sendText(chatID, "❌ Проверьте числа.\n\nПример:\n`55 165 20 female medium loss`")
+		return
+	}
+
+	heightM := height / 100
+	bmi := weight / (heightM * heightM)
+
+	genderValue := -161.0
+	if gender == "male" {
+		genderValue = 5
+	}
+
+	bmr := 10*weight + 6.25*height - 5*float64(age) + genderValue
+
+	multiplier := 1.2
+	if activity == "medium" {
+		multiplier = 1.55
+	}
+	if activity == "high" {
+		multiplier = 1.725
+	}
+
+	maintenance := bmr * multiplier
+	target := maintenance
+
+	if goal == "loss" {
+		target = maintenance - 300
+	}
+	if goal == "gain" {
+		target = maintenance + 300
+	}
+
+	status := "Норма"
+	if bmi < 18.5 {
+		status = "Недостаточный вес"
+	} else if bmi >= 25 && bmi < 30 {
+		status = "Избыточный вес"
+	} else if bmi >= 30 {
+		status = "Ожирение"
+	}
+
+	msg := fmt.Sprintf(
+		"🧮 *Ваш результат*\n\n"+
+			"ИМТ: *%.1f* — %s\n"+
+			"Базовый обмен: *%.0f ккал/день*\n"+
+			"Поддержание: *%.0f ккал/день*\n"+
+			"Для цели: *%.0f ккал/день*",
+		bmi,
+		status,
+		bmr,
+		maintenance,
+		target,
+	)
+
+	b.sendText(chatID, msg)
+}
+
+func (b *BotApp) finishCalculator(chatID int64, userID int64) {
+
+	data := b.calculatorData[userID]
+
+	weight, _ := strconv.ParseFloat(data["weight"], 64)
+	height, _ := strconv.ParseFloat(data["height"], 64)
+	age, _ := strconv.Atoi(data["age"])
+
+	gender := data["gender"]
+	activity := data["activity"]
+	goal := data["goal"]
+
+	heightM := height / 100
+	bmi := weight / (heightM * heightM)
+
+	genderValue := -161.0
+
+	if strings.Contains(strings.ToLower(gender), "муж") {
+		genderValue = 5
+	}
+
+	bmr := 10*weight + 6.25*height - 5*float64(age) + genderValue
+
+	multiplier := 1.2
+
+	if strings.Contains(activity, "Сред") {
+		multiplier = 1.55
+	}
+
+	if strings.Contains(activity, "Выс") {
+		multiplier = 1.725
+	}
+
+	maintenance := bmr * multiplier
+	target := maintenance
+
+	if strings.Contains(goal, "Пох") {
+		target -= 300
+	}
+
+	if strings.Contains(goal, "Наб") {
+		target += 300
+	}
+
+	status := "Норма"
+
+	if bmi < 18.5 {
+		status = "Недостаточный вес"
+	} else if bmi >= 25 && bmi < 30 {
+		status = "Избыточный вес"
+	} else if bmi >= 30 {
+		status = "Ожирение"
+	}
+
+	msg := fmt.Sprintf(
+		"🧮 *Ваш результат*\n\n"+
+			"📊 ИМТ: *%.1f* — %s\n"+
+			"🔥 Базовый обмен: *%.0f ккал*\n"+
+			"⚡ Поддержание веса: *%.0f ккал*\n"+
+			"🎯 Для вашей цели: *%.0f ккал*",
+		bmi,
+		status,
+		bmr,
+		maintenance,
+		target,
+	)
+
+	b.sendText(chatID, msg)
+
+	delete(b.calculatorData, userID)
 }

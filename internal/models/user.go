@@ -11,4 +11,13 @@ type User struct {
 	Name       string
 	Role       string `gorm:"default:'user'"`
 	IsAdmin    bool
+
+	Age          int
+	Gender       string
+	Height       float64
+	Weight       float64
+	Goal         string
+	Activity     string
+	FitnessLevel string
+	TargetWeight float64
 }

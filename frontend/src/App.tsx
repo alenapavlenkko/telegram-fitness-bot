@@ -2,15 +2,17 @@ import * as React from 'react'
 import Trainings from './Trainings'
 import Nutrition from './Nutrition'
 import Stats from './Stats'
+import Calculator from './Calculator'
 import './index.css'
+import Profile from './Profile'
 
-type Page = 'home' | 'trainings' | 'nutrition' | 'stats' | 'profile'
+type Page = 'home' | 'trainings' | 'nutrition' | 'stats' | 'calculator' | 'profile'
 
 export default function App() {
     const [page, setPage] = React.useState<Page>('home')
 
     React.useEffect(() => {
-        const tg = window.Telegram?.WebApp
+        const tg = (window as any).Telegram?.WebApp
         if (tg) {
             tg.ready()
             tg.expand()
@@ -32,7 +34,8 @@ export default function App() {
                 {page === 'trainings' && <Trainings />}
                 {page === 'nutrition' && <Nutrition />}
                 {page === 'stats' && <Stats />}
-                {page === 'profile' && <ProfilePage />}
+                {page === 'profile' && <Profile />}
+                {page === 'calculator' && <Calculator />}
             </main>
 
             <nav className="bottom-nav">
@@ -97,33 +100,16 @@ function HomePage({ setPage }: { setPage: (page: Page) => void }) {
                         <div className="quick-title">Профиль</div>
                         <div className="quick-desc">Данные пользователя</div>
                     </button>
+
+                    <button className="quick-card" onClick={() => setPage('calculator')}>
+                        <div className="quick-icon">🧮</div>
+                        <div className="quick-title">Калькулятор</div>
+                        <div className="quick-desc">ИМТ и калории</div>
+                    </button>
+                    
                 </div>
             </section>
         </div>
     )
 }
 
-function ProfilePage() {
-    return (
-        <div className="stack">
-            <section className="card profile-card">
-                <div className="avatar">A</div>
-                <div>
-                    <h2 className="profile-name">Ваш профиль</h2>
-                    <p className="profile-subtitle">Telegram Mini App пользователя</p>
-                </div>
-            </section>
-        </div>
-    )
-}
-
-declare global {
-    interface Window {
-        Telegram?: {
-            WebApp?: {
-                ready: () => void
-                expand: () => void
-            }
-        }
-    }
-}
