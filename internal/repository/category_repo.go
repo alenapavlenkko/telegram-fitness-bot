@@ -5,44 +5,46 @@ import (
 	"gorm.io/gorm"
 )
 
-// можно убрать
-type CategoryRepository interface {
-	Create(category *models.Category) (*models.Category, error)
-	FindAll() ([]*models.Category, error)
-	FindByID(id uint) (*models.Category, error)
-	Update(category *models.Category) error
-	Delete(id uint) error
-}
-
-type categoryRepo struct {
+// CategoryRepository отвечает за работу с категориями в БД
+type CategoryRepository struct {
 	db *gorm.DB
 }
 
-func NewCategoryRepo(db *gorm.DB) CategoryRepository {
-	return &categoryRepo{db: db}
+// NewCategoryRepository создает новый repository для категорий
+func NewCategoryRepository(db *gorm.DB) *CategoryRepository {
+	return &CategoryRepository{db: db}
 }
 
-func (r *categoryRepo) Create(category *models.Category) (*models.Category, error) {
+// Create создает новую категорию
+func (r *CategoryRepository) Create(category *models.Category) (*models.Category, error) {
 	err := r.db.Create(category).Error
 	return category, err
 }
 
-func (r *categoryRepo) FindAll() ([]*models.Category, error) {
+// FindAll возвращает список всех категорий
+func (r *CategoryRepository) FindAll() ([]*models.Category, error) {
 	var categories []*models.Category
+
 	err := r.db.Find(&categories).Error
+
 	return categories, err
 }
 
-func (r *categoryRepo) FindByID(id uint) (*models.Category, error) {
+// FindByID возвращает категорию по ID
+func (r *CategoryRepository) FindByID(id uint) (*models.Category, error) {
 	var category models.Category
+
 	err := r.db.First(&category, id).Error
+
 	return &category, err
 }
 
-func (r *categoryRepo) Update(category *models.Category) error {
+// Update обновляет категорию
+func (r *CategoryRepository) Update(category *models.Category) error {
 	return r.db.Save(category).Error
 }
 
-func (r *categoryRepo) Delete(id uint) error {
+// Delete удаляет категорию
+func (r *CategoryRepository) Delete(id uint) error {
 	return r.db.Delete(&models.Category{}, id).Error
 }

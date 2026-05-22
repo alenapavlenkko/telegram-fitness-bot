@@ -6,16 +6,20 @@ import (
 )
 
 type CategoryService struct {
-	repo repository.CategoryRepository
+	repo *repository.CategoryRepository
 }
 
-func NewCategoryService(repo repository.CategoryRepository) *CategoryService {
+func NewCategoryService(repo *repository.CategoryRepository) *CategoryService {
 	return &CategoryService{repo: repo}
 }
 
 // CreateCategory - создать категорию
 func (s *CategoryService) CreateCategory(dto CreateCategoryDTO) (*models.Category, error) {
-	category := &models.Category{Name: dto.Name}
+	category := &models.Category{
+		Name:        dto.Name,
+		Description: dto.Description,
+		Type:        dto.Type,
+	}
 	return s.repo.Create(category) // repo.Create уже возвращает (*Category, error)
 }
 

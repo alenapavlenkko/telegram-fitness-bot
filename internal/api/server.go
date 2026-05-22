@@ -14,6 +14,8 @@ type ServerDeps struct {
 	NutritionService *service.NutritionService
 	UserService      *service.UserService
 	WeightService    *service.WeightService
+
+	AdminIDs []int64
 }
 
 func StartServer(deps ServerDeps) {
@@ -211,6 +213,100 @@ func StartServer(deps ServerDeps) {
 			"change":        startWeight - currentWeight,
 			"logsCount":     len(logs),
 		})
+	})
+
+	// ========================================
+	// TELEGRAM AUTH
+	// ========================================
+
+	r.POST("/api/auth/telegram", func(c *gin.Context) {
+
+		var input struct {
+			TelegramID int64  `json:"telegram_id"`
+			Username   string `json:"username"`
+			FirstName  string `json:"first_name"`
+			LastName   string `json:"last_name"`
+		}
+
+		// Парсим request
+		if err := c.ShouldBindJSON(&input); err != nil {
+
+			c.JSON(
+				http.StatusBadRequest,
+				gin.H{
+					"error": err.Error(),
+				},
+			)
+
+			return
+		}
+
+		// ========================================
+		// ИЩЕМ USER
+		// ========================================
+
+		user, err := deps.UserService.GetUserByTelegramID(
+			input.TelegramID,
+		)
+
+		// ========================================
+		// ЕСЛИ НЕТ — СОЗДАЕМ
+		// ========================================
+
+		if err != nil {
+
+			user, err = deps.UserService.CreateUser(
+				service.CreateUserDTO{
+
+					TelegramID: input.TelegramID,
+
+					Name: input.FirstName + " " + input.LastName,
+
+					Role: "user",
+				},
+			)
+
+			if err != nil {
+
+				c.JSON(
+					http.StatusInternalServerError,
+					gin.H{
+						"error": err.Error(),
+					},
+				)
+
+				return
+			}
+		}
+
+		// ========================================
+		// ROLE SYSTEM
+		// ========================================
+
+		isAdmin := false
+
+		for _, adminID := range deps.AdminIDs {
+
+			if adminID == input.TelegramID {
+
+				isAdmin = true
+				break
+			}
+		}
+
+		// ========================================
+		// RESPONSE
+		// ========================================
+
+		c.JSON(
+			http.StatusOK,
+			gin.H{
+
+				"user": user,
+
+				"isAdmin": isAdmin,
+			},
+		)
 	})
 
 	fmt.Println("🌐 Сервер запущен: http://localhost:8080/app")

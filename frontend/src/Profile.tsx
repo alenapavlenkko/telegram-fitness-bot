@@ -30,7 +30,11 @@ function normalizeUser(user: any, fallback: ProfileForm): ProfileForm {
     }
 }
 
-export default function Profile() {
+export default function Profile({
+                                    setPage,
+                                }: {
+    setPage: (page: any) => void
+}) {
     const tgUser = (window as any).Telegram?.WebApp?.initDataUnsafe?.user
 
     const initialForm: ProfileForm = {

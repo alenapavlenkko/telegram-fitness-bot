@@ -1,7 +1,7 @@
-cat > .gitignore << 'EOF'
 # Dependency directories
 vendor/
 node_modules/
+frontend/node_modules/
 
 # Environment variables
 .env
@@ -9,6 +9,7 @@ node_modules/
 .env.development.local
 .env.test.local
 .env.production.local
+frontend/.env
 
 # IDE files
 .vscode/
@@ -19,6 +20,7 @@ node_modules/
 # Build files
 bin/
 dist/
+frontend/dist/
 *.exe
 *.out
 *.test
@@ -51,4 +53,3 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
-EOF

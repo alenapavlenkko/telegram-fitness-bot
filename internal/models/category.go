@@ -2,9 +2,17 @@ package models
 
 import "gorm.io/gorm"
 
+// Category — категория тренировок или питания
 type Category struct {
 	gorm.Model
-	Name        string
+
+	// Название категории
+	Name string
+
+	// Описание категории
 	Description string
-	Type        string // "training", "nutrition", "general"
+
+	// Тип:
+	// training / nutrition / general
+	Type string
 }

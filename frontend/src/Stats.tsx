@@ -21,7 +21,11 @@ type Progress = {
 
 const defaultTelegramId = 898030333
 
-export default function Stats() {
+export default function Stats({
+                                  setPage,
+                              }: {
+    setPage: (page: any) => void
+}) {
     const tgUser = (window as any).Telegram?.WebApp?.initDataUnsafe?.user
     const telegramId = tgUser?.id ?? defaultTelegramId
 

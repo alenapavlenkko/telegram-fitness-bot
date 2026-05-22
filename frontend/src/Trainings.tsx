@@ -15,7 +15,11 @@ type Training = {
     youtubeLink?: string
 }
 
-export default function Trainings() {
+export default function Trainings({
+                                       setPage,
+                                   }: {
+    setPage: (page: any) => void
+}) {
     const [data, setData] = React.useState<Training[]>([])
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
@@ -26,6 +30,7 @@ export default function Trainings() {
                 if (!res.ok) {
                     throw new Error(`Ошибка API: ${res.status}`)
                 }
+
                 return res.json()
             })
             .then(setData)
@@ -76,19 +81,30 @@ export default function Trainings() {
                             const video = t.YouTubeLink ?? t.youtubeLink ?? ''
 
                             return (
-                                <article key={id} className="training-card">
+                                <article
+                                    key={id}
+                                    className="training-card"
+                                >
                                     <div className="training-top">
                                         <div>
-                                            <h3 className="training-title">{title}</h3>
+                                            <h3 className="training-title">
+                                                {title}
+                                            </h3>
+
                                             <p className="training-duration">
                                                 ⏱ {duration} мин · {difficulty}
                                             </p>
                                         </div>
-                                        <div className="training-badge">Workout</div>
+
+                                        <div className="training-badge">
+                                            Workout
+                                        </div>
                                     </div>
 
                                     {description && (
-                                        <p className="training-description">{description}</p>
+                                        <p className="training-description">
+                                            {description}
+                                        </p>
                                     )}
 
                                     <div className="training-actions">
@@ -102,7 +118,10 @@ export default function Trainings() {
                                                 Смотреть видео
                                             </a>
                                         ) : (
-                                            <button className="primary-btn" disabled>
+                                            <button
+                                                className="primary-btn"
+                                                disabled
+                                            >
                                                 Видео скоро
                                             </button>
                                         )}

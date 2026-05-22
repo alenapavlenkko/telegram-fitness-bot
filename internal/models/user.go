@@ -2,22 +2,45 @@ package models
 
 import "gorm.io/gorm"
 
+// User — пользователь Telegram бота
 type User struct {
 	gorm.Model
-	TelegramID int64 `gorm:"uniqueIndex"`
-	Username   string
-	FirstName  string
-	LastName   string
-	Name       string
-	Role       string `gorm:"default:'user'"`
-	IsAdmin    bool
 
-	Age          int
-	Gender       string
-	Height       float64
-	Weight       float64
-	Goal         string
-	Activity     string
+	// Telegram
+	TelegramID int64 `gorm:"uniqueIndex"`
+
+	Username  string
+	FirstName string
+	LastName  string
+
+	// Отображаемое имя
+	Name string
+
+	// Роль пользователя
+	Role string `gorm:"default:'user'"`
+
+	// Администратор
+	IsAdmin bool
+
+	// ========================================
+	// Профиль
+	// ========================================
+
+	Age int
+
+	Gender string
+
+	Height float64
+
+	Weight float64
+
+	Goal string
+
+	// Низкая / Средняя / Высокая
+	Activity string
+
+	// Начальный / Средний / Продвинутый
 	FitnessLevel string
+
 	TargetWeight float64
 }

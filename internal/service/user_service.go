@@ -80,3 +80,11 @@ func (s *UserService) UpdateProfile(dto UpdateProfileDTO) (*models.User, error) 
 
 	return user, nil
 }
+
+// UpdateUser обновляет данные пользователя
+func (s *UserService) UpdateUser(
+	user *models.User,
+) error {
+
+	return s.repo.Update(user)
+}

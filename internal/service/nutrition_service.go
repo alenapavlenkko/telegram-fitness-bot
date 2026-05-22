@@ -1,4 +1,3 @@
-// internal/service/nutrition_service.go
 package service
 
 import (
@@ -35,7 +34,6 @@ func (s *NutritionService) CreateNutrition(dto CreateNutritionDTO) (*models.Nutr
 	return s.repo.Create(plan)
 }
 
-// List - список планов питания
 func (s *NutritionService) ListNutrition() ([]*models.NutritionPlan, error) {
 	return s.repo.FindAll()
 }
@@ -137,8 +135,6 @@ func (s *NutritionService) AddDayToWeeklyMenu(dto AddDayToMenuDTO) (*models.Menu
 	return s.weeklyMenuRepo.CreateDay(day)
 }
 
-// internal/service/nutrition_service.go
-// Исправьте строку 143 - удалите неиспользуемую переменную nutrition
 func (s *NutritionService) AddMealToDay(dto AddMealToDayDTO) (*models.DayMeal, error) {
 	// Проверяем существование питания
 	_, err := s.repo.FindByID(dto.NutritionID)
@@ -184,7 +180,6 @@ func (s *NutritionService) GetFullWeeklyMenu(menuID uint) (*models.WeeklyMenu, e
 		return nil, err
 	}
 
-	// Получаем дни (предполагаем, что возвращает []*models.MenuDay)
 	days, err := s.weeklyMenuRepo.FindDaysByMenuID(menuID)
 	if err != nil {
 		return nil, err

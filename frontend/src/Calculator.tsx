@@ -4,7 +4,11 @@ type Gender = 'female' | 'male' | 'other'
 type Goal = 'Похудение' | 'Набор массы' | 'Поддержание формы'
 type Activity = 'Низкая' | 'Средняя' | 'Высокая'
 
-export default function Calculator() {
+export default function Calculator({
+                                       setPage,
+                                   }: {
+    setPage: (page: any) => void
+}) {
     const [weight, setWeight] = React.useState(55)
     const [height, setHeight] = React.useState(165)
     const [age, setAge] = React.useState(20)
