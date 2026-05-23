@@ -41,6 +41,16 @@ export default function App() {
     const [role, setRole] =
         React.useState<'user' | 'admin' | null>(null)
 
+    // Для доступа из браузера (без Telegram WebApp)
+    const [showIdPrompt, setShowIdPrompt] =
+        React.useState(false)
+
+    const [telegramIdInput, setTelegramIdInput] =
+        React.useState('')
+    const [idError, setIdError] = React.useState<string | null>(null)
+    const [authLoading, setAuthLoading] =
+        React.useState(false)
+
     // Состояние загрузки
     const [loading, setLoading] =
         React.useState(true)
@@ -51,32 +61,12 @@ export default function App() {
         // Получаем Telegram Mini App API
         const tg = window.Telegram?.WebApp
 
-        // DEV режим для браузера
+        // Если внутри обычного браузера — нет WebApp
         if (!tg) {
 
-            console.log(
-                'DEV MODE ENABLED',
-            )
-
-            // Тестовый пользователь
-            setUser({
-
-                id: 1,
-
-                telegram_id: 898030333,
-
-                name: 'Alena Admin',
-            })
-
-            // Включаем admin режим
-            setIsAdmin(true)
-
-            // Показываем выбор роли
-            setRole(null)
-
-            // Отключаем loading
+            // Показываем форму для ввода Telegram ID, чтобы проверить права
             setLoading(false)
-
+            setShowIdPrompt(true)
             return
         }
 
@@ -136,6 +126,11 @@ export default function App() {
                     // Сохраняем admin статус
                     setIsAdmin(data.isAdmin)
 
+                    // Если не админ — сразу переходим в user режим
+                    if (!data.isAdmin) {
+                        setRole('user')
+                    }
+
                     // Отключаем loading
                     setLoading(false)
                 })
@@ -157,6 +152,51 @@ export default function App() {
 
     }, [])
 
+    const handleLoginById = async () => {
+        setIdError(null)
+        setAuthLoading(true)
+
+        const telegramId = Number(telegramIdInput.trim())
+
+        if (!telegramId || Number.isNaN(telegramId)) {
+            setIdError('Введите корректный Telegram ID')
+            setAuthLoading(false)
+            return
+        }
+
+        try {
+            const res = await fetch('/api/auth/telegram', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    telegram_id: telegramId,
+                    username: 'browser',
+                    first_name: 'Web',
+                    last_name: 'User',
+                }),
+            })
+
+            if (!res.ok) {
+                const data = await res.json()
+                throw new Error(data.error || `Ошибка ${res.status}`)
+            }
+
+            const data = await res.json()
+
+            setUser(data.user)
+            setIsAdmin(data.isAdmin)
+            setShowIdPrompt(false)
+        }
+        catch (err: any) {
+            setIdError(err.message || 'Ошибка авторизации')
+        }
+        finally {
+            setAuthLoading(false)
+        }
+    }
+
     // Экран загрузки
     if (loading) {
 
@@ -172,6 +212,57 @@ export default function App() {
 
                 </div>
 
+            </div>
+        )
+    }
+
+    // Экран ввода Telegram ID в браузере
+    if (showIdPrompt) {
+        return (
+            <div className="app-shell">
+                <div className="stack">
+                    <section className="card">
+                        <div className="section-head">
+                            <h2>Вход в веб-версии</h2>
+                        </div>
+                        <p className="muted">
+                            Введите Telegram ID, чтобы проверить права администратора и продолжить.
+                        </p>
+                        <input
+                            type="text"
+                            className="input-field"
+                            placeholder="Telegram ID"
+                            value={telegramIdInput}
+                            onChange={(event) => setTelegramIdInput(event.target.value)}
+                            onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                    handleLoginById()
+                                }
+                            }}
+                        />
+                        <div className="button-row">
+                            <button
+                                className="primary-btn"
+                                onClick={handleLoginById}
+                                disabled={authLoading}
+                            >
+                                {authLoading ? 'Проверка...' : 'Войти'}
+                            </button>
+                            <button
+                                className="secondary-btn"
+                                onClick={() => {
+                                    setShowIdPrompt(false)
+                                    setRole('user')
+                                }}
+                            >
+                                Продолжить как гость
+                            </button>
+                        </div>
+                        {idError && (
+                            <p className="error-text">{idError}</p>
+                        )}
+                    </section>
+                </div>
             </div>
         )
     }

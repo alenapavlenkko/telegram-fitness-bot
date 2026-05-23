@@ -35,6 +35,121 @@ export default function Admin() {
     const [success, setSuccess] =
         React.useState<string | null>(null)
 
+    // Список тренировок
+    const [trainings, setTrainings] =
+        React.useState<any[]>([])
+
+    // Список питания
+    const [nutrition, setNutrition] =
+        React.useState<any[]>([])
+
+    // Поля формы питания
+    const [nutritionTitle, setNutritionTitle] =
+        React.useState('')
+
+    const [nutritionDescription, setNutritionDescription] =
+        React.useState('')
+
+    const [calories, setCalories] =
+        React.useState('')
+
+    const [proteins, setProteins] =
+        React.useState('')
+
+    const [fats, setFats] =
+        React.useState('')
+
+    const [carbs, setCarbs] =
+        React.useState('')
+
+    // Загрузка тренировок
+    async function loadTrainings() {
+
+        try {
+
+            const response = await fetch(
+                '/api/trainings',
+            )
+
+            const data = await response.json()
+
+            setTrainings(data)
+        }
+        catch (err) {
+
+            console.error(err)
+        }
+    }
+
+    // Загрузка питания
+    async function loadNutrition() {
+
+        try {
+
+            const response = await fetch(
+                '/api/nutrition',
+            )
+
+            const data = await response.json()
+
+            setNutrition(data)
+
+        } catch (err) {
+
+            console.error(err)
+        }
+    }
+
+    // Удаление тренировки
+    async function deleteTraining(
+        id: number,
+    ) {
+
+        try {
+
+            await fetch(
+
+                `/api/admin/trainings/${id}?telegramId=898030333`,
+
+                {
+                    method: 'DELETE',
+                },
+            )
+
+            // Обновляем список
+            loadTrainings()
+        }
+        catch (err) {
+
+            console.error(err)
+        }
+    }
+
+    // Удаление питания
+    async function deleteNutrition(
+        id: number,
+    ) {
+
+        try {
+
+            await fetch(
+
+                `/api/admin/nutrition/${id}?telegramId=898030333`,
+
+                {
+                    method: 'DELETE',
+                },
+            )
+
+            loadNutrition()
+
+        } catch (err) {
+
+            console.error(err)
+        }
+    }
+
+    // Создание тренировки
     async function createTraining() {
 
         // Сброс сообщений
@@ -74,6 +189,8 @@ export default function Admin() {
 
                     body: JSON.stringify({
 
+                        telegram_id: 898030333,
+
                         title,
 
                         description,
@@ -95,6 +212,7 @@ export default function Admin() {
                 )
             }
 
+            // Успешное сообщение
             setSuccess(
                 '✅ Тренировка успешно добавлена',
             )
@@ -105,6 +223,9 @@ export default function Admin() {
             setDuration('')
             setDifficulty('')
             setYoutubeLink('')
+
+            // Обновляем список
+            loadTrainings()
         }
         catch (err: any) {
 
@@ -118,6 +239,76 @@ export default function Admin() {
             setLoading(false)
         }
     }
+
+    // Создание питания
+    async function createNutrition() {
+
+        try {
+
+            const response = await fetch(
+
+                '/api/admin/nutrition',
+
+                {
+                    method: 'POST',
+
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+
+                    body: JSON.stringify({
+
+                        telegram_id: 898030333,
+
+                        title: nutritionTitle,
+
+                        description: nutritionDescription,
+
+                        calories: Number(calories),
+
+                        proteins: Number(proteins),
+
+                        fats: Number(fats),
+
+                        carbs: Number(carbs),
+
+                        category_id: 5,
+                    }),
+                },
+            )
+
+            if (!response.ok) {
+
+                throw new Error(
+                    'Ошибка создания питания',
+                )
+            }
+
+            // Очистка
+            setNutritionTitle('')
+            setNutritionDescription('')
+            setCalories('')
+            setProteins('')
+            setFats('')
+            setCarbs('')
+
+            // Обновляем список
+            loadNutrition()
+
+        } catch (err) {
+
+            console.error(err)
+        }
+    }
+
+    // Загружаем тренировки при открытии страницы
+    React.useEffect(() => {
+
+        loadTrainings()
+
+        loadNutrition()
+
+    }, [])
 
     // RENDER
     return (
@@ -242,6 +433,209 @@ export default function Admin() {
                             : '➕ Добавить тренировку'}
 
                     </button>
+
+                </div>
+
+            </section>
+
+            <section className="card">
+
+                <div className="section-head">
+
+                    <h2>
+                        🍎 Питание
+                    </h2>
+
+                </div>
+
+                <div className="form-group">
+
+                    <input
+                        className="input"
+                        placeholder="Название"
+                        value={nutritionTitle}
+                        onChange={(e) =>
+                            setNutritionTitle(
+                                e.target.value,
+                            )
+                        }
+                    />
+
+                    <textarea
+                        className="input"
+                        placeholder="Описание"
+                        value={nutritionDescription}
+                        onChange={(e) =>
+                            setNutritionDescription(
+                                e.target.value,
+                            )
+                        }
+                    />
+
+                    <input
+                        className="input"
+                        placeholder="Калории"
+                        value={calories}
+                        onChange={(e) =>
+                            setCalories(
+                                e.target.value,
+                            )
+                        }
+                    />
+
+                    <input
+                        className="input"
+                        placeholder="Белки"
+                        value={proteins}
+                        onChange={(e) =>
+                            setProteins(
+                                e.target.value,
+                            )
+                        }
+                    />
+
+                    <input
+                        className="input"
+                        placeholder="Жиры"
+                        value={fats}
+                        onChange={(e) =>
+                            setFats(
+                                e.target.value,
+                            )
+                        }
+                    />
+
+                    <input
+                        className="input"
+                        placeholder="Углеводы"
+                        value={carbs}
+                        onChange={(e) =>
+                            setCarbs(
+                                e.target.value,
+                            )
+                        }
+                    />
+
+                    <button
+                        className="primary-btn"
+                        onClick={createNutrition}
+                    >
+
+                        ➕ Добавить питание
+
+                    </button>
+
+                </div>
+
+            </section>
+
+            <section className="card">
+
+                <div className="section-head">
+
+                    <h2>
+                        📋 Список питания
+                    </h2>
+
+                </div>
+
+                <div className="training-list">
+
+                    {nutrition.map((n) => (
+
+                        <div
+                            key={n.ID}
+                            className="training-card"
+                        >
+
+                            <h3>
+                                {n.Title}
+                            </h3>
+
+                            <p>
+                                {n.Description}
+                            </p>
+
+                            <p>
+                                🔥 {n.Calories} ккал
+                            </p>
+
+                            <p>
+                                Б: {n.Proteins}
+                                |
+                                Ж: {n.Fats}
+                                |
+                                У: {n.Carbs}
+                            </p>
+
+                            <button
+                                className="primary-btn"
+                                onClick={() =>
+                                    deleteNutrition(
+                                        n.ID,
+                                    )
+                                }
+                            >
+
+                                🗑 Удалить
+
+                            </button>
+
+                        </div>
+                    ))}
+
+                </div>
+
+            </section>
+
+            {/* СПИСОК ТРЕНИРОВОК */}
+
+            <section className="card">
+
+                <div className="section-head">
+
+                    <h2>
+                        📋 Список тренировок
+                    </h2>
+
+                </div>
+
+                <div className="training-list">
+
+                    {trainings.map((t) => (
+
+                        <div
+                            key={t.ID}
+                            className="training-card"
+                        >
+
+                            <h3>
+                                {t.Title}
+                            </h3>
+
+                            <p>
+                                {t.Description}
+                            </p>
+
+                            <p>
+                                ⏱ {t.Duration} мин
+                            </p>
+
+                            <button
+                                className="primary-btn"
+                                onClick={() =>
+                                    deleteTraining(
+                                        t.ID,
+                                    )
+                                }
+                            >
+
+                                🗑 Удалить
+
+                            </button>
+
+                        </div>
+                    ))}
 
                 </div>
 
